@@ -34,9 +34,10 @@ an IShellFolder implementation, but never any details or source.
 **Requirements**
 - Windows 7+
 - twinBASIC
-- This code depends on my WinDevLib package.
+- Windows Development Library for twinBASIC (References->Available packages).
  
-(Note: Fairly trivial to adapt to VB6/oleexp.tlb)
+VB6 port:
+- [oleexp.tlb](https://www.vbforums.com/showthread.php?786079) with addons mIID.bas and mPKEY.bas (included with download)
 
 **Changelog**
 - v1.0 (17 Jun 2025) - Initial release.
