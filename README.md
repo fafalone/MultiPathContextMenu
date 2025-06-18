@@ -1,4 +1,4 @@
-# MultiPathContextMenu
+# MultiPathContextMenu v1.1
 Show an IContextMenu for files across multiple paths (and drives!)
 
 ![image](https://github.com/user-attachments/assets/53e467ad-db0e-4841-b3ef-fca0e74c89bc)
@@ -38,7 +38,9 @@ an IShellFolder implementation, but never any details or source.
  
 VB6 port:
 - [oleexp.tlb](https://www.vbforums.com/showthread.php?786079) with addons mIID.bas and mPKEY.bas (included with download)
+- **NOTE:** VB6 port is v1.0 only, it's now behind the v1.1+ updates of the main tB version.
 
 **Changelog**
+- v1.1 (18 Jun 2025) - Support IContextMenu3/2 HandleMenuMsg routing; fix custom owner/coord use
 - v1.0 (17 Jun 2025) - Initial release.
 
