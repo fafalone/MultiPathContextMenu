@@ -84,6 +84,7 @@ Option Explicit
 'This code depends on my WinDevLib package.
 '
 '**Changelog**
+'v1.0.2 - Bug fix: Customer owner and coords removed.
 'v1.0 (17 Jun 2025) - Initial release.
 '
 '*/
@@ -207,7 +208,9 @@ End Enum
                 GetCursorPos pt
                 ptX = pt.x: ptY = pt.y
             End If
-            Dim idCmd As Long: idCmd = TrackPopupMenu(hMenu, TPM_LEFTBUTTON Or TPM_RIGHTBUTTON Or TPM_LEFTALIGN Or TPM_TOPALIGN Or TPM_HORIZONTAL Or TPM_RETURNCMD, pt.x, pt.y, 0&, Me.hwnd, 0&)
+            Dim idCmd As Long = TrackPopupMenu(hMenu, TPM_LEFTBUTTON Or TPM_RIGHTBUTTON Or _
+                                    TPM_LEFTALIGN Or TPM_TOPALIGN Or TPM_HORIZONTAL Or TPM_RETURNCMD, _
+                                    ptX, ptY, 0&, hOwner, 0&)
             Debug.Print "Command=" & idCmd
             If idCmd Then
                 Dim cmi As CMINVOKECOMMANDINFO
