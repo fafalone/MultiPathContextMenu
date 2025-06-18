@@ -32,9 +32,12 @@ an IShellFolder implementation, but never any details or source.
 
 
 **Requirements**
-Windows 7+
-This code depends on my WinDevLib package.
+- Windows 7+
+- twinBASIC
+- This code depends on my WinDevLib package.
+- 
+(Note: Fairly trivial to adapt to VB6/oleexp.tlb)
 
 **Changelog**
-v1.0 (17 Jun 2025) - Initial release.
+- v1.0 (17 Jun 2025) - Initial release.
 
