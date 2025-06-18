@@ -208,7 +208,7 @@ End Enum
                 GetCursorPos pt
                 ptX = pt.x: ptY = pt.y
             End If
-            Dim idCmd As Long = TrackPopupMenu(hMenu, TPM_LEFTBUTTON Or TPM_RIGHTBUTTON Or _
+            Dim idCmd As Long: idCmd = TrackPopupMenu(hMenu, TPM_LEFTBUTTON Or TPM_RIGHTBUTTON Or _
                                     TPM_LEFTALIGN Or TPM_TOPALIGN Or TPM_HORIZONTAL Or TPM_RETURNCMD, _
                                     ptX, ptY, 0&, hOwner, 0&)
             Debug.Print "Command=" & idCmd
