@@ -4,7 +4,7 @@
 Class Form1
 /*
 Multi-path Context Menu Demo
-v1.0
+v1.1
 Show an IContextMenu for files across multiple paths (and drives!)
 by Jon Johnson
 https://github.com/fafalone/MultiPathContextMenu
@@ -42,12 +42,15 @@ Windows 7+
 This code depends on my WinDevLib package.
 
 **Changelog**
-v1.0.2 - Bug fix: Custom owner/coords ignored.
+v1.1 (18 Jun 2025) - Support IContextMenu3/2 HandleMenuMsg routing; fix custom owner/coord use
 v1.0 (17 Jun 2025) - Initial release.
 
 */
+Option Explicit
 
-
+Private mCtx2 As IContextMenu2
+Private mCtx3 As IContextMenu3
+    
     Private Sub Command1_Click() Handles Command1.Click
         If Text1.Text = "" Then
             MsgBox "Error: No files entered.", vbCritical Or vbOKOnly, App.Title
@@ -114,9 +117,17 @@ v1.0 (17 Jun 2025) - Initial release.
         End If
         Set piaScope = Nothing
     End Function
-    Private Function DisplayContextMenu(ByVal pCtx As IContextMenu, ByVal hOwner As LongPtr, Optional ByVal ptX As Long = -1, Optional ByVal ptY As Long = -1, Optional ByVal dwFlags As QueryContextMenuFlags = CMF_EXPLORE) As Long
+    
+    Private Function DisplayContextMenu(ByVal pCtx As IContextMenu, ByVal hOwner As LongPtr, _
+                            Optional ByVal ptX As Long = -1, Optional ByVal ptY As Long = -1, _
+                            Optional ByVal dwFlags As QueryContextMenuFlags = CMF_EXPLORE) As Long
         If pCtx IsNot Nothing Then
             Debug.Print "Got context menu"
+            On Error Resume Next
+            Set mCtx3 = pCtx
+            If mCtx3 Is Nothing Then
+                Set mCtx2 = pCtx
+            End If
             Dim hMenu As LongPtr = CreatePopupMenu()
             pCtx.QueryContextMenu(hMenu, 0, 1, &H7FFF&, dwFlags)
             If (ptX = -1) OrElse (ptY = -1) Then
@@ -124,9 +135,8 @@ v1.0 (17 Jun 2025) - Initial release.
                 GetCursorPos pt
                 ptX = pt.x: ptY = pt.y
             End If
-            Dim idCmd As Long = TrackPopupMenu(hMenu, TPM_LEFTBUTTON Or TPM_RIGHTBUTTON Or _
-                                    TPM_LEFTALIGN Or TPM_TOPALIGN Or TPM_HORIZONTAL Or TPM_RETURNCMD, _
-                                    ptX, ptY, 0&, hOwner, 0&)
+            Dim idCmd As Long = TrackPopupMenu(hMenu, TPM_LEFTBUTTON Or TPM_RIGHTBUTTON Or TPM_LEFTALIGN Or _
+                                        TPM_TOPALIGN Or TPM_HORIZONTAL Or TPM_RETURNCMD, ptX, ptY, 0&, hOwner, 0&)
             Debug.Print "Command=" & idCmd
             If idCmd Then
                 Dim cmi As CMINVOKECOMMANDINFO
@@ -138,9 +148,12 @@ v1.0 (17 Jun 2025) - Initial release.
                 End With
                 pCtx.InvokeCommand VarPtr(cmi)
             End If
+            Set mCtx3 = Nothing
+            Set mCtx2 = Nothing
             DestroyMenu hMenu
         End If
     End Function
+    
     Private Function CreateSearchLibrary(pObC As IObjectCollection) As Long
     Set pObC = Nothing
     Dim pLib As IShellLibrary
@@ -151,6 +164,7 @@ v1.0 (17 Jun 2025) - Initial release.
         Debug.Print "CreateSearchLibrary->Failed to create ShellLibrary"
     End If
     End Function
+    
     Private Function GetFoldersForFiles(sFiles() As String, sFolders() As String) As Long
         'Get a list of the folders our files are in, making sure to add each path only once.
         Dim sFolder As String
@@ -174,6 +188,7 @@ v1.0 (17 Jun 2025) - Initial release.
         Next
         Return nFolders
     End Function
+    
     Private Function CreateSearchScope(sFiles() As String, ppia As IShellItemArray) As Long
     On Error GoTo e0
     Set ppia = Nothing
@@ -200,6 +215,7 @@ v1.0 (17 Jun 2025) - Initial release.
     Debug.Print "Error in " & CurrentProcedureName & ": 0x" & Hex$(Err.Number) & ", " & GetSystemErrorString(Err.Number)
     Return Err.Number
     End Function
+    
     Private Function GetCondition(sFiles() As String, ppCondition As ICondition) As Long
     'Get a search ICondition object that matches only our exact files.
     Set ppCondition = Nothing
@@ -229,5 +245,44 @@ v1.0 (17 Jun 2025) - Initial release.
     
     End Function
     
+    Private Function Subclass2(hWnd As LongPtr, lpFN As LongPtr, Optional uId As LongPtr = 0&, Optional dwRefData As LongPtr = 0&) As Boolean
+    If uId = 0 Then uId = hWnd
+        Subclass2 = SetWindowSubclass(hWnd, lpFN, uId, dwRefData):      Debug.Assert Subclass2
+    End Function
+
+    Private Function UnSubclass2(hWnd As LongPtr, ByVal lpFN As LongPtr, pid As LongPtr) As Boolean
+        UnSubclass2 = RemoveWindowSubclass(hWnd, lpFN, pid)
+    End Function
+
+    Private Function FormWndProc(ByVal hWnd As LongPtr, ByVal uMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr, ByVal uIdSubclass As LongPtr, ByVal dwRefData As LongPtr) As LongPtr
+
+    Select Case uMsg
+        Case WM_INITMENUPOPUP, WM_DRAWITEM, WM_MEASUREITEM, WM_MENUCHAR
+            Dim lResult As Long
+            On Error GoTo e1
+            If (mCtx3 Is Nothing) = False Then
+                Dim lRs3 As LongPtr
+                Call mCtx3.HandleMenuMsg2(uMsg, wParam, lParam, lRs3)
+                Return lRs3
+            ElseIf (mCtx2 Is Nothing) = False Then
+                Call mCtx2.HandleMenuMsg(uMsg, wParam, lParam)
+            End If
+        Case WM_DESTROY
+            Call UnSubclass2(hWnd, AddressOf FormWndProc, uIdSubclass)
+    End Select
+    Return DefSubclassProc(hWnd, uMsg, wParam, lParam)
+    e1:
+    Debug.Print "FormWndProc->Warning(1): " & Err.Description & ", 0x" & Hex$(Err.Number)
+    Resume Next
+    End Function
     
+    Private Sub Form_Load() Handles Form.Load
+        Subclass2 Me.hWnd, AddressOf FormWndProc, Me.hWnd
+    End Sub
+    
+    Private Sub Form_Unload(Cancel As Integer) Handles Form.Unload
+        Set mCtx3 = Nothing
+        Set mCtx2 = Nothing
+        UnSubclass2 Me.hWnd, AddressOf FormWndProc, Me.hWnd
+    End Sub
 End Class
