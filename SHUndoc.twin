@@ -1,0 +1,74 @@
+
+
+'These are the new undocumented APIs I used for v1.2.
+'They've been merged into WinDevLib so are left here but commented out for informational purposes.
+
+'Credit goes mostly to GitHub/thebookisclosed/shsxs for these interfaces;
+'I figured out the missing arguments needed for some functions (inc the main one needed here),
+'and discovered the scope factory actually calls out to APIs, and figured out the arguments
+'for these APIs. As far as I can tell, I'm the first ever to use SHCreateScopeFromIDListsEx
+'(besides Microsoft in the Windows source, obviously)
+  
+
+' [InterfaceId("18455d05-d8f8-47f0-ba4c-c3aaf9c7035f")]
+' [OleAutomation(False)]
+' Interface ISearchFolderItemFactoryPriv Extends IUnknown
+'     Sub SetScopeWithDepth(ByVal scope As IShellItemArray, ByVal depth As SCOPE_ITEM_DEPTH)
+' End Interface
+' [InterfaceId("BD59C2F9-F763-400D-A76E-028C35D047B8")]
+' [OleAutomation(False)]
+' Interface ISearchFolderItemFactoryPrivEx Extends IUnknown
+'     Sub SetScopeWithDepth(ByVal scope As IShellItemArray, ByVal depth As SCOPE_ITEM_DEPTH)
+'     Sub SetScopeDirect(ByVal scope As IScope)
+' End Interface
+' [InterfaceId("54410B83-6787-4418-9735-5AAAABE83A9A")]
+' [OleAutomation(False)]
+' Interface IScopeFactory Extends IUnknown
+'     Sub CreateScope(ByRef riid As UUID, ByRef ppv As LongPtr) 
+'     Sub CreateScopeFromShellItemArray(ByVal si As IShellItemArray, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef riid As UUID, ByRef ppv As any)
+'     Sub CreateScopeFromIDLists(ByVal cidl As Long, apidl As LongPtr, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef riid As UUID, ByRef ppv As any)
+'     Sub CreateScopeItemFromIDList(ByVal pidl As LongPtr, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef id2 As UUID, ByRef ppv As any)
+'     Sub CreateScopeItemFromKnownFolder(ByRef id1 As UUID, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef id2 As UUID, ByRef ppv As any)
+'     Sub CreateScopeItemFromShellItem(ByVal si As IShellItem, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef id2 As UUID, ByRef ppv As any)
+' End Interface
+' [CoClassId("6746C347-576B-4F73-9012-CDFEEA251BC4")]
+' [Description("CLSID_ScopeFactory")]
+' CoClass ScopeFactory
+'     [Default] Interface IScopeFactory
+' End CoClass
+
+
+
+' Module SHUndoc
+' Public Declare PtrSafe Function SHCreateScope Lib "Windows.Storage.Search.dll" (ByRef riid As UUID, ByRef ppv As LongPtr) As Long
+' Public Declare PtrSafe Function SHCreateScopeFromShellItemArray Lib "Windows.Storage.Search.dll" (ByVal si As IShellItemArray, ByRef riid As UUID, ByRef ppv As Any) As Long
+' Public Declare PtrSafe Function SHCreateScopeFromIDListsEx Lib "Windows.Storage.Search.dll" (ByVal cidl As Long, apidl As LongPtr, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef riid As UUID, ByRef ppv As Any) As Long
+' Public Declare PtrSafe Function SHCreateScopeItemFromIDList Lib "Windows.Storage.Search.dll" (ByVal pidl As LongPtr, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef id2 As UUID, ByRef ppv As Any) As Long
+' Public Declare PtrSafe Function SHCreateScopeItemFromKnownFolder Lib "Windows.Storage.Search.dll" (ByRef id1 As UUID, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef id2 As UUID, ByRef ppv As Any) As Long
+' Public Declare PtrSafe Function SHCreateScopeItemFromShellItem Lib "Windows.Storage.Search.dll" (ByVal si As IShellItem, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef id2 As UUID, ByRef ppv As Any) As Long
+   
+'     Public Enum SCOPE_ITEM_TYPE
+'         SI_TYPE_INVALID = 0
+'         SI_TYPE_INCLUDE = 1
+'         SI_TYPE_EXCLUDE = 2
+'     End Enum
+    
+'     Public Enum SCOPE_ITEM_DEPTH
+'         SI_DEPTH_INVALID = 0
+'         SI_DEPTH_SHALLOW = 1
+'         SI_DEPTH_DEEP = 2
+'     End Enum
+    
+'     Public Enum SCOPE_ITEM_FLAGS
+'         SI_FLAG_DEFAULT = 0
+'         SI_FLAG_FORCEEXHAUSTIVE = 1
+'         SI_FLAG_KNOWNFOLDER = 2
+'         SI_FLAG_FASTPROPERTIESONLY = 4
+'         SI_FLAG_FASTITEMSONLY = 8
+'         SI_FLAG_NOINFOBAR = 16
+'         SI_FLAG_USECHILDSCOPES = 32
+'         SI_FLAG_FASTPROVIDERSONLY = 64
+'         SI_FLAG_OVERRIDE_FOLDER_BEHAVIOR = 128
+'     End Enum
+
+' End Module

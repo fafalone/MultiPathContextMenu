@@ -4,7 +4,7 @@
 Class Form1
 /*
 Multi-path Context Menu Demo
-v1.1
+v1.2
 Show an IContextMenu for files across multiple paths (and drives!)
 by Jon Johnson
 https://github.com/fafalone/MultiPathContextMenu
@@ -42,14 +42,29 @@ Windows 7+
 This code depends on my WinDevLib package.
 
 **Changelog**
+v1.2 (22 Jun 2025) - Demonstration of 2 similar more efficient methods of setting the search
+                     scope, using undocumented interfaces and APIs, see SHUndoc.twin for 
+                     details. Note whether these work on Vista/7 and 11+ is unknown, I'm only
+                     sure about 8 and 10. For most apps, I recommend sticking to the original
+                     method, which uses all documented interfaces/APIs.
 v1.1 (18 Jun 2025) - Support IContextMenu3/2 HandleMenuMsg routing; fix custom owner/coord use
 v1.0 (17 Jun 2025) - Initial release.
 
 */
 Option Explicit
 
-Private mCtx2 As IContextMenu2
-Private mCtx3 As IContextMenu3
+    Private mCtx2 As IContextMenu2
+    Private mCtx3 As IContextMenu3
+    
+    Private Sub Form_Load() Handles Form.Load
+        Subclass2 Me.hWnd, AddressOf FormWndProc, Me.hWnd
+    End Sub
+    
+    Private Sub Form_Unload(Cancel As Integer) Handles Form.Unload
+        Set mCtx3 = Nothing
+        Set mCtx2 = Nothing
+        UnSubclass2 Me.hWnd, AddressOf FormWndProc, Me.hWnd
+    End Sub
     
     Private Sub Command1_Click() Handles Command1.Click
         If Text1.Text = "" Then
@@ -64,6 +79,36 @@ Private mCtx3 As IContextMenu3
             End If
         Next
         MultiPathContextMenu(sFiles, Me.hWnd)
+    End Sub
+    
+    Private Sub Command2_Click() Handles Command2.Click
+        If Text1.Text = "" Then
+            MsgBox "Error: No files entered.", vbCritical Or vbOKOnly, App.Title
+            Exit Sub
+        End If
+        Dim sFiles() As String = Split(Text1.Text, vbCrLf)
+        For i As Long = 0 To UBound(sFiles)
+            If PathFileExists(sFiles(i)) = CFALSE Then
+                MsgBox "Error: All files must exist; " & sFiles(i) & " was not found.", vbCritical Or vbOKOnly, App.Title
+                Exit Sub
+            End If
+        Next
+        MultiPathContextMenuEx(sFiles, Me.hWnd)
+    End Sub
+    
+    Private Sub Command3_Click() Handles Command3.Click
+        If Text1.Text = "" Then
+            MsgBox "Error: No files entered.", vbCritical Or vbOKOnly, App.Title
+            Exit Sub
+        End If
+        Dim sFiles() As String = Split(Text1.Text, vbCrLf)
+        For i As Long = 0 To UBound(sFiles)
+            If PathFileExists(sFiles(i)) = CFALSE Then
+                MsgBox "Error: All files must exist; " & sFiles(i) & " was not found.", vbCritical Or vbOKOnly, App.Title
+                Exit Sub
+            End If
+        Next
+        MultiPathContextMenuEx2(sFiles, Me.hWnd)
     End Sub
     
     Private Function MultiPathContextMenu(sFiles() As String, ByVal hOwner As LongPtr, Optional ByVal ptX As Long = -1, Optional ByVal ptY As Long = -1, Optional ByVal dwFlags As QueryContextMenuFlags = CMF_EXPLORE) As Long
@@ -116,6 +161,131 @@ Private mCtx3 As IContextMenu3
             Debug.Print "MultiPathContextMenu::Couldn't create scope."
         End If
         Set piaScope = Nothing
+    End Function
+    Private Function MultiPathContextMenuEx(sFiles() As String, ByVal hOwner As LongPtr, Optional ByVal ptX As Long = -1, Optional ByVal ptY As Long = -1, Optional ByVal dwFlags As QueryContextMenuFlags = CMF_EXPLORE) As Long
+        Dim pSearchFact As ISearchFolderItemFactory
+        Set pSearchFact = New SearchFolderItemFactory
+        Dim piaScope As IShellItemArray
+        Dim hr As Long
+        Dim sFolders() As String
+        GetFoldersForFiles sFiles, sFolders
+        Dim apidl() As LongPtr
+        ReDim apidl(UBound(sFolders))
+        For i As Long = 0 To UBound(sFolders)
+            apidl(i) = ILCreateFromPath(sFolders(i))
+        Next
+        Dim psFact As IScopeFactory
+        Set psFact = New ScopeFactory
+        Dim pScope As IScope
+        psFact.CreateScopeFromIDLists(UBound(apidl) + 1, apidl(0), SI_TYPE_INCLUDE, SI_DEPTH_SHALLOW, 0, IID_IScope, pScope)
+        If pScope IsNot Nothing Then
+            Debug.Print "Got scope"
+            Dim pSearchPriv As ISearchFolderItemFactoryPrivEx
+            Set pSearchPriv = pSearchFact
+            If pSearchPriv IsNot Nothing Then
+                Debug.Print "Got private search factory"
+                pSearchPriv.SetScopeDirect(pScope)
+            End If
+        End If
+        Dim pCond As ICondition
+        If GetCondition(sFiles, pCond) = S_OK Then
+            pSearchFact.SetCondition pCond
+            Dim siRes As IShellItem, pidlRes As LongPtr
+            Dim pEnum As IEnumShellItems, siChild As IShellItem
+            pSearchFact.GetShellItem IID_IShellItem, siRes
+            If siRes IsNot Nothing Then
+                Dim pidlFQ() As LongPtr, pidlRel() As LongPtr, nPidl As Long, pidlTmp As LongPtr
+                SHGetIDListFromObject(siRes, pidlRes)
+                siRes.BindToHandler(0, BHID_EnumItems, IID_IEnumShellItems, pEnum)
+                If pEnum IsNot Nothing Then
+                    Do While pEnum.Next(1, siChild) = S_OK
+                        ReDim Preserve pidlFQ(nPidl)
+                        ReDim Preserve pidlRel(nPidl)
+                        SHGetIDListFromObject(siChild, pidlTmp)
+                        pidlFQ(nPidl) = ILClone(pidlTmp)
+                        pidlRel(nPidl) = ILFindLastID(pidlFQ(nPidl))
+                        CoTaskMemFree pidlTmp
+                        nPidl += 1
+                    Loop
+                    Dim ppsia As IShellItemArray
+                    Dim pCtx As IContextMenu
+                    SHCreateShellItemArray(pidlRes, Nothing, UBound(pidlRel) + 1, pidlRel(0), ppsia)
+                    ppsia.BindToHandler(0, BHID_SFUIObject, IID_IContextMenu, pCtx)
+                    hr = DisplayContextMenu(pCtx, hOwner, ptX, ptY, dwFlags)
+                    FreeIDListArray(pidlFQ, UBound(pidlFQ) + 1)
+                    Set pCtx = Nothing
+                    Set ppsia = Nothing
+                    Set pEnum = Nothing
+                Else
+                    Debug.Print "MultiPathContextMenu::Couldn't get folder enumerator."
+                End If
+                CoTaskMemFree pidlRes
+            End If
+        End If
+        Set pCond = Nothing
+        Set siRes = Nothing
+        Set pSearchFact = Nothing
+    End Function
+    Private Function MultiPathContextMenuEx2(sFiles() As String, ByVal hOwner As LongPtr, Optional ByVal ptX As Long = -1, Optional ByVal ptY As Long = -1, Optional ByVal dwFlags As QueryContextMenuFlags = CMF_EXPLORE) As Long
+        Dim pSearchFact As ISearchFolderItemFactory
+        Set pSearchFact = New SearchFolderItemFactory
+        Dim hr As Long
+        Dim sFolders() As String
+        GetFoldersForFiles sFiles, sFolders
+        Dim apidl() As LongPtr
+        ReDim apidl(UBound(sFolders))
+        For i As Long = 0 To UBound(sFolders)
+            apidl(i) = ILCreateFromPath(sFolders(i))
+        Next
+        Dim pScope As IScope
+        SHCreateScopeFromIDListsEx(UBound(apidl) + 1, apidl(0), SI_TYPE_INCLUDE, SI_DEPTH_SHALLOW, 0, IID_IScope, pScope)
+        If pScope IsNot Nothing Then
+            Debug.Print "Got scope"
+            Dim pSearchPriv As ISearchFolderItemFactoryPrivEx
+            Set pSearchPriv = pSearchFact
+            If pSearchPriv IsNot Nothing Then
+                Debug.Print "Got private search factory"
+                pSearchPriv.SetScopeDirect(pScope)
+            End If
+        End If
+        Dim pCond As ICondition
+        If GetCondition(sFiles, pCond) = S_OK Then
+            pSearchFact.SetCondition pCond
+            Dim siRes As IShellItem, pidlRes As LongPtr
+            Dim pEnum As IEnumShellItems, siChild As IShellItem
+            pSearchFact.GetShellItem IID_IShellItem, siRes
+            If siRes IsNot Nothing Then
+                Dim pidlFQ() As LongPtr, pidlRel() As LongPtr, nPidl As Long, pidlTmp As LongPtr
+                SHGetIDListFromObject(siRes, pidlRes)
+                siRes.BindToHandler(0, BHID_EnumItems, IID_IEnumShellItems, pEnum)
+                If pEnum IsNot Nothing Then
+                    Do While pEnum.Next(1, siChild) = S_OK
+                        ReDim Preserve pidlFQ(nPidl)
+                        ReDim Preserve pidlRel(nPidl)
+                        SHGetIDListFromObject(siChild, pidlTmp)
+                        pidlFQ(nPidl) = ILClone(pidlTmp)
+                        pidlRel(nPidl) = ILFindLastID(pidlFQ(nPidl))
+                        CoTaskMemFree pidlTmp
+                        nPidl += 1
+                    Loop
+                    Dim ppsia As IShellItemArray
+                    Dim pCtx As IContextMenu
+                    SHCreateShellItemArray(pidlRes, Nothing, UBound(pidlRel) + 1, pidlRel(0), ppsia)
+                    ppsia.BindToHandler(0, BHID_SFUIObject, IID_IContextMenu, pCtx)
+                    hr = DisplayContextMenu(pCtx, hOwner, ptX, ptY, dwFlags)
+                    FreeIDListArray(pidlFQ, UBound(pidlFQ) + 1)
+                    Set pCtx = Nothing
+                    Set ppsia = Nothing
+                    Set pEnum = Nothing
+                Else
+                    Debug.Print "MultiPathContextMenu::Couldn't get folder enumerator."
+                End If
+                CoTaskMemFree pidlRes
+            End If
+        End If
+        Set pCond = Nothing
+        Set siRes = Nothing
+        Set pSearchFact = Nothing
     End Function
     
     Private Function DisplayContextMenu(ByVal pCtx As IContextMenu, ByVal hOwner As LongPtr, _
@@ -276,13 +446,4 @@ Private mCtx3 As IContextMenu3
     Resume Next
     End Function
     
-    Private Sub Form_Load() Handles Form.Load
-        Subclass2 Me.hWnd, AddressOf FormWndProc, Me.hWnd
-    End Sub
-    
-    Private Sub Form_Unload(Cancel As Integer) Handles Form.Unload
-        Set mCtx3 = Nothing
-        Set mCtx2 = Nothing
-        UnSubclass2 Me.hWnd, AddressOf FormWndProc, Me.hWnd
-    End Sub
 End Class
