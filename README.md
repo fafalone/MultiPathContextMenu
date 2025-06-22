@@ -43,8 +43,7 @@ VB6 port:
 **Changelog**
 - v1.2 (22 Jun 2025) - Demonstration of 2 similar more efficient methods of setting the search
                      scope, using undocumented interfaces and APIs, see SHUndoc.twin for 
-                     details. Note whether these work on Vista/7 and 11+ is unknown, I'm only
-                     sure about 8 and 10. For most apps, I recommend sticking to the original
+                     details. These do not work on Windows 7, and on 8 only Undoc v1 works. For most apps, I recommend sticking to the original
                      method, which uses all documented interfaces/APIs.
 - v1.1 (18 Jun 2025) - Support IContextMenu3/2 HandleMenuMsg routing; fix custom owner/coord use
 - v1.0 (17 Jun 2025) - Initial release.
