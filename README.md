@@ -1,4 +1,4 @@
-# MultiPathContextMenu v1.1
+# MultiPathContextMenu v1.2
 Show an IContextMenu for files across multiple paths (and drives!)
 
 ![image](https://github.com/user-attachments/assets/53e467ad-db0e-4841-b3ef-fca0e74c89bc)
@@ -41,6 +41,51 @@ VB6 port:
 - **NOTE:** VB6 port is v1.0 only, it's now behind the v1.1+ updates of the main tB version.
 
 **Changelog**
+- v1.2 (22 Jun 2025) - Demonstration of 2 similar more efficient methods of setting the search
+                     scope, using undocumented interfaces and APIs, see SHUndoc.twin for 
+                     details. Note whether these work on Vista/7 and 11+ is unknown, I'm only
+                     sure about 8 and 10. For most apps, I recommend sticking to the original
+                     method, which uses all documented interfaces/APIs.
 - v1.1 (18 Jun 2025) - Support IContextMenu3/2 HandleMenuMsg routing; fix custom owner/coord use
 - v1.0 (17 Jun 2025) - Initial release.
 
+**New in v1.2: Undocumented APIs**
+
+These let us skip the whole complicated routine with IShellLibrary and IObjectArray, which seems to speed up the menu appearance noticably. `SHCreateScopeFromIDListsEx` is the fastest and most efficient; from the call stack and symbol files, I could determine that the Scope Factory interfaces were actually just a wrapper for the APIs; unusual, as it's typically the other way around.
+
+```vba
+ [InterfaceId("18455d05-d8f8-47f0-ba4c-c3aaf9c7035f")]
+  [OleAutomation(False)]
+  Interface ISearchFolderItemFactoryPriv Extends IUnknown
+      Sub SetScopeWithDepth(ByVal scope As IShellItemArray, ByVal depth As SCOPE_ITEM_DEPTH)
+  End Interface
+  [InterfaceId("BD59C2F9-F763-400D-A76E-028C35D047B8")]
+  [OleAutomation(False)]
+  Interface ISearchFolderItemFactoryPrivEx Extends IUnknown
+      Sub SetScopeWithDepth(ByVal scope As IShellItemArray, ByVal depth As SCOPE_ITEM_DEPTH)
+      Sub SetScopeDirect(ByVal scope As IScope)
+  End Interface
+  [InterfaceId("54410B83-6787-4418-9735-5AAAABE83A9A")]
+  [OleAutomation(False)]
+  Interface IScopeFactory Extends IUnknown
+      Sub CreateScope(ByRef riid As UUID, ByRef ppv As Any)
+      Sub CreateScopeFromShellItemArray(ByVal si As IShellItemArray, ByRef riid As UUID, ByRef ppv As any)
+      Sub CreateScopeFromIDLists(ByVal cidl As Long, apidl As LongPtr, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef riid As UUID, ByRef ppv As any)
+      Sub CreateScopeItemFromIDList(ByVal pidl As LongPtr, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef id2 As UUID, ByRef ppv As any)
+      Sub CreateScopeItemFromKnownFolder(ByRef id1 As UUID, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef id2 As UUID, ByRef ppv As any)
+      Sub CreateScopeItemFromShellItem(ByVal si As IShellItem, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef id2 As UUID, ByRef ppv As any)
+  End Interface
+  [CoClassId("6746C347-576B-4F73-9012-CDFEEA251BC4")]
+  [Description("CLSID_ScopeFactory")]
+  CoClass ScopeFactory
+      [Default] Interface IScopeFactory
+  End CoClass
+ 
+    
+    Public Declare PtrSafe Function SHCreateScope Lib "Windows.Storage.Search.dll" (ByRef riid As UUID, ByRef ppv As LongPtr) As Long
+    Public Declare PtrSafe Function SHCreateScopeFromShellItemArray Lib "Windows.Storage.Search.dll" (ByVal si As IShellItemArray, ByRef riid As UUID, ByRef ppv As Any) As Long
+    Public Declare PtrSafe Function SHCreateScopeFromIDListsEx Lib "Windows.Storage.Search.dll" (ByVal cidl As Long, apidl As LongPtr, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef riid As UUID, ByRef ppv As Any) As Long
+    Public Declare PtrSafe Function SHCreateScopeItemFromIDList Lib "Windows.Storage.Search.dll" (ByVal pidl As LongPtr, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef id2 As UUID, ByRef ppv As Any) As Long
+    Public Declare PtrSafe Function SHCreateScopeItemFromKnownFolder Lib "Windows.Storage.Search.dll" (ByRef id1 As UUID, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef id2 As UUID, ByRef ppv As Any) As Long
+    Public Declare PtrSafe Function SHCreateScopeItemFromShellItem Lib "Windows.Storage.Search.dll" (ByVal si As IShellItem, ByVal type As SCOPE_ITEM_TYPE, ByVal depth As SCOPE_ITEM_DEPTH, ByVal flags As SCOPE_ITEM_FLAGS, ByRef id2 As UUID, ByRef ppv As Any) As Long
+```
