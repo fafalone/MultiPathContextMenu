@@ -1,4 +1,4 @@
-# MultiPathContextMenu v1.2
+# MultiPathContextMenu v1.3
 Show an IContextMenu for files across multiple paths (and drives!)
 
 ![image](https://github.com/user-attachments/assets/53e467ad-db0e-4841-b3ef-fca0e74c89bc)
@@ -41,6 +41,15 @@ VB6 port:
 - **NOTE:** VB6 port is v1.0 only, it's now behind the v1.1+ updates of the main tB version.
 
 **Changelog**
+- v1.3 (23 Jun 2025) - The original version froze if you pass a folder in the drive root, e.g.
+                     C:\folder. Numerous methods using documented features were unsuccessful
+                     in preventing this, so the standard method now resorts to minimal use of
+                     the undocumented ISearchFolderItemFactoryPriv interface. That's not present
+                     on Win10+, so we have a fallback for ISearchFolderItemFactoryPrivEx which
+                     contains the same method we're interested it. It doesn't use any scope
+                     factory or scope APIs, so should be compatible with all current Windows.
+                     The original method is included if you want to continue exploring solutions
+                     that don't rely on undocumented magic.
 - v1.2 (22 Jun 2025) - Demonstration of 2 similar more efficient methods of setting the search
                      scope, using undocumented interfaces and APIs, see SHUndoc.twin for 
                      details. These do not work on Windows 7, and on 8 only Undoc v1 works. For most apps, I recommend sticking to the original
