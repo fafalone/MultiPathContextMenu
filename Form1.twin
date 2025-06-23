@@ -51,6 +51,8 @@ v1.3 (23 Jun 2025) - The original version froze if you pass a folder in the driv
                      factory or scope APIs, so should be compatible with all current Windows.
                      The original method is included if you want to continue exploring solutions
                      that don't rely on undocumented magic.
+                     This also appears to resolve an issue where it froze on certain files,
+                     like explorer.exe.
 v1.2 (22 Jun 2025) - Demonstration of 2 similar more efficient methods of setting the search
                      scope, using undocumented interfaces and APIs, see SHUndoc.twin for 
                      details. Note whether these work on Vista/7 and 11+ is unknown, I'm only
