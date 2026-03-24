@@ -1,4 +1,4 @@
-# MultiPathContextMenu v1.3
+# MultiPathContextMenu v1.4
 Show an IContextMenu for files across multiple paths (and drives!)
 
 ![image](https://github.com/user-attachments/assets/53e467ad-db0e-4841-b3ef-fca0e74c89bc)
@@ -41,6 +41,8 @@ VB6 port:
 - **NOTE:** VB6 port is v1.0 only, it's now behind the v1.1+ updates of the main tB version.
 
 **Changelog**
+- v1.4 (23 Mar 2026) - Added the IObjectWithSite and IServiceProvider calls so Share at least works 
+                     as well as it does in other 3rd party browsers.
 - v1.3 (23 Jun 2025) - The original version froze if you pass a folder in the drive root, e.g.
                      C:\folder. Numerous methods using documented features were unsuccessful
                      in preventing this, so the standard method now resorts to minimal use of
