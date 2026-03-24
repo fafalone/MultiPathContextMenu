@@ -4,7 +4,7 @@
 Class Form1
 /*
 Multi-path Context Menu Demo
-v1.3
+v1.4
 Show an IContextMenu for files across multiple paths (and drives!)
 by Jon Johnson
 https://github.com/fafalone/MultiPathContextMenu
@@ -42,6 +42,8 @@ Windows 7+
 This code depends on my WinDevLib package.
 
 **Changelog**
+v1.4 (23 Mar 2026) - Added the IObjectWithSite and IServiceProvider calls so Share at least works 
+                     as well as it does in other 3rd party browsers.
 v1.3 (23 Jun 2025) - The original version froze if you pass a folder in the drive root, e.g.
                      C:\folder. Numerous methods using documented features were unsuccessful
                      in preventing this, so the standard method now resorts to minimal use of
@@ -66,7 +68,8 @@ Option Explicit
 
     Private mCtx2 As IContextMenu2
     Private mCtx3 As IContextMenu3
-    
+    Implements IServiceProvider
+    ' Implements IOleWindow
     Private Sub Form_Load() Handles Form.Load
         Subclass2 Me.hWnd, AddressOf FormWndProc, Me.hWnd
     End Sub
@@ -392,6 +395,9 @@ Option Explicit
             If mCtx3 Is Nothing Then
                 Set mCtx2 = pCtx
             End If
+            Dim s As IObjectWithSite
+            Set s = pCtx
+            s.SetSite(Me)
             Dim hMenu As LongPtr = CreatePopupMenu()
             pCtx.QueryContextMenu(hMenu, 0, 1, &H7FFF&, dwFlags)
             If (ptX = -1) OrElse (ptY = -1) Then
@@ -559,8 +565,10 @@ Option Explicit
                 Dim lRs3 As LongPtr
                 Call mCtx3.HandleMenuMsg2(uMsg, wParam, lParam, lRs3)
                 Return lRs3
-            ElseIf (mCtx2 Is Nothing) = False Then
+            End If
+            If (mCtx2 Is Nothing) = False Then
                 Call mCtx2.HandleMenuMsg(uMsg, wParam, lParam)
+                Return Err.LastHresult
             End If
         Case WM_DESTROY
             Call UnSubclass2(hWnd, AddressOf FormWndProc, uIdSubclass)
@@ -570,6 +578,31 @@ Option Explicit
     Debug.Print "FormWndProc->Warning(1): " & Err.Description & ", 0x" & Hex$(Err.Number)
     Resume Next
     End Function
+
     
+    Private Function dbg_GUIDToString(tg As UUID, Optional bBrack As Boolean = True) As String
+    'StringFromGUID2 never works, even "working" code from vbaccelerator AND MSDN
+    dbg_GUIDToString = Right$("00000000" & Hex$(tg.Data1), 8) & "-" & Right$("0000" & Hex$(tg.Data2), 4) & "-" & Right$("0000" & Hex$(tg.Data3), 4) & _
+    "-" & Right$("00" & Hex$(CLng(tg.Data4(0))), 2) & Right$("00" & Hex$(CLng(tg.Data4(1))), 2) & "-" & Right$("00" & Hex$(CLng(tg.Data4(2))), 2) & _
+    Right$("00" & Hex$(CLng(tg.Data4(3))), 2) & Right$("00" & Hex$(CLng(tg.Data4(4))), 2) & Right$("00" & Hex$(CLng(tg.Data4(5))), 2) & _
+    Right$("00" & Hex$(CLng(tg.Data4(6))), 2) & Right$("00" & Hex$(CLng(tg.Data4(7))), 2)
+    If bBrack Then dbg_GUIDToString = "{" & dbg_GUIDToString & "}"
+    End Function
+
     
+    Private Sub IServiceProvider_QueryService(guidService As UUID, riid As UUID, ppvObject As LongPtr) Implements IServiceProvider.QueryService
+        Dim pUnk As IUnknownUnrestricted
+        If IsEqualGUID(riid, IID_IOleWindow) Then
+           Debug.Print "ISP QueryService IOleWindow"
+          Set pUnk = Me
+          pUnk.QueryInterface IID_IOleWindow, ppvObject
+       Else
+           Debug.Print "ISP QS Serv=" & dbg_GUIDToString(guidService)
+           Debug.Print "ISP QS riid=" & dbg_GUIDToString(riid)
+          Err.ReturnHResult = E_NOTIMPL
+        End If
+    End Sub
+
+
+
 End Class
